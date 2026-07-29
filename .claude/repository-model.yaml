@@ -1,0 +1,332 @@
+version: 1
+facts:
+  languages:
+    - id: lang-bash
+      value: Bash
+      evidence:
+        - junto-setup.sh
+        - junto-launch.sh
+        - junto-check.sh
+        - templates/render.sh
+    - id: lang-python
+      value: Python 3
+      evidence:
+        - check-auth.py
+    - id: lang-powershell
+      value: PowerShell
+      evidence:
+        - templates/render.ps1
+    - id: lang-markdown
+      value: Markdown
+      evidence:
+        - README.md
+        - templates/junto-system-prompt.md.tmpl
+        - docs/getting-started.md
+  frameworks: []
+  commands:
+    - id: cmd-setup
+      name: setup
+      value: ~/.junto/junto-setup.sh
+      evidence:
+        - junto-setup.sh
+    - id: cmd-launch
+      name: launch
+      value: ~/.junto/junto-launch.sh
+      evidence:
+        - junto-launch.sh
+    - id: cmd-launch-no-plugin
+      name: launch-no-plugin
+      value: ~/.junto/junto-launch.sh --no-plugin
+      evidence:
+        - junto-launch.sh
+    - id: cmd-check
+      name: check
+      value: ~/.junto/junto-check.sh
+      evidence:
+        - junto-check.sh
+    - id: cmd-check-fix
+      name: check-fix
+      value: ~/.junto/junto-check.sh --fix
+      evidence:
+        - junto-check.sh
+    - id: cmd-render-sh
+      name: render-sh
+      value: ./render.sh --agent NAME --project NAME --role "ROLE" --shared-memory-url URL
+      evidence:
+        - templates/render.sh
+    - id: cmd-render-ps1
+      name: render-ps1
+      value: .\render.ps1 -Agent NAME -Project NAME -Role "ROLE" -SharedMemoryUrl URL
+      evidence:
+        - templates/render.ps1
+    - id: cmd-check-auth
+      name: check-auth
+      value: python3 check-auth.py URL API_KEY PROJECT
+      evidence:
+        - check-auth.py
+  entry_points:
+    - id: entry-setup
+      value: junto-setup.sh
+      evidence:
+        - junto-setup.sh
+    - id: entry-launch
+      value: junto-launch.sh
+      evidence:
+        - junto-launch.sh
+    - id: entry-check
+      value: junto-check.sh
+      evidence:
+        - junto-check.sh
+    - id: entry-check-auth
+      value: check-auth.py
+      evidence:
+        - check-auth.py
+    - id: entry-render-sh
+      value: templates/render.sh
+      evidence:
+        - templates/render.sh
+    - id: entry-render-ps1
+      value: templates/render.ps1
+      evidence:
+        - templates/render.ps1
+    - id: entry-system-prompt-tmpl
+      value: templates/junto-system-prompt.md.tmpl
+      evidence:
+        - templates/junto-system-prompt.md.tmpl
+        - templates/README.md
+  components:
+    - id: comp-templates
+      name: templates
+      path: templates
+      evidence:
+        - templates/README.md
+        - templates/junto-system-prompt.md.tmpl
+        - templates/render.sh
+        - templates/render.ps1
+    - id: comp-docs
+      name: docs
+      path: docs
+      evidence:
+        - docs/getting-started.md
+        - docs/claude-md-migration.md
+        - docs/team-member-guide.md
+    - id: comp-adopter-cli
+      name: adopter-cli
+      path: .
+      evidence:
+        - junto-setup.sh
+        - junto-launch.sh
+        - junto-check.sh
+        - check-auth.py
+        - README.md
+        - .gitignore
+  dependencies:
+    - id: dep-claude-cli
+      name: claude
+      type: external
+      evidence:
+        - junto-setup.sh
+        - junto-launch.sh
+        - docs/getting-started.md
+    - id: dep-python3
+      name: python3
+      type: external
+      evidence:
+        - check-auth.py
+        - junto-setup.sh
+        - junto-check.sh
+    - id: dep-curl
+      name: curl
+      type: external
+      evidence:
+        - junto-setup.sh
+        - junto-check.sh
+        - docs/getting-started.md
+    - id: dep-git
+      name: git
+      type: external
+      evidence:
+        - junto-check.sh
+        - docs/getting-started.md
+        - README.md
+    - id: dep-tailscale
+      name: tailscale
+      type: external
+      evidence:
+        - junto-check.sh
+        - templates/overlays/first-run.md
+        - docs/getting-started.md
+  external_services:
+    - id: svc-junto-memory
+      value: junto-memory MCP server (HTTP /mcp, health at /health)
+      evidence:
+        - README.md
+        - docs/getting-started.md
+        - check-auth.py
+        - templates/junto-system-prompt.md.tmpl
+    - id: svc-junto-inbox
+      value: junto-inbox Claude Code channel plugin (marketplace tlemmons-junto-inbox)
+      evidence:
+        - README.md
+        - junto-launch.sh
+        - docs/getting-started.md
+        - templates/overlays/first-run.md
+    - id: svc-spg-junto-central
+      value: spg-junto-central host (default shared memory endpoint host in check/docs)
+      evidence:
+        - junto-check.sh
+        - docs/team-member-guide.md
+  testing: []
+analysis:
+  purpose:
+    value: "Umbrella repo for the Junto multi-agent coordination system: ships the canonical agent system-prompt template plus adopter setup/launch/check scripts so Claude Code agents share persistent memory and operating rules via junto-memory."
+    confidence: high
+    evidence_refs:
+      - lang-bash
+      - entry-system-prompt-tmpl
+      - comp-templates
+      - comp-adopter-cli
+      - svc-junto-memory
+  architecture:
+    value: "Adopter flow: junto-setup.sh writes local config and MCP registration, then junto-launch.sh renders templates/junto-system-prompt.md.tmpl via templates/render.sh and execs Claude with --append-system-prompt-file (optionally loading junto-inbox). Agents talk over HTTP MCP to junto-memory; check-auth.py and junto-check.sh validate reachability and API-key project access. docs/ onboards humans; overlays/ extend the base prompt per project."
+    confidence: high
+    evidence_refs:
+      - entry-setup
+      - entry-launch
+      - entry-render-sh
+      - entry-check-auth
+      - entry-check
+      - comp-templates
+      - comp-docs
+      - svc-junto-memory
+      - svc-junto-inbox
+  patterns:
+    - id: pat-template-overlay
+      value: "Two-layer prompt model — required base template plus optional project overlay and rare --extras; overlays must be additive only and share the same {{var}} surface."
+      confidence: high
+      evidence_refs:
+        - comp-templates
+        - entry-system-prompt-tmpl
+        - entry-render-sh
+    - id: pat-unresolved-token-fail
+      value: "Renderers exit 3 if any {{...}} token remains after substitution (safety net against shipping raw placeholders)."
+      confidence: high
+      evidence_refs:
+        - entry-render-sh
+        - entry-render-ps1
+        - comp-templates
+    - id: pat-claude-md-identity
+      value: "Per-directory CLAUDE.md holds agent/project identity markers; junto-launch.sh auto-detects or interactively creates them; operational rules stay in the injected system prompt, not in CLAUDE.md."
+      confidence: high
+      evidence_refs:
+        - entry-launch
+        - entry-setup
+        - comp-docs
+    - id: pat-go-park
+      value: "Session macros go/park/status in the base template define orient-before-act and park-before-exit handoff discipline against junto-memory."
+      confidence: high
+      evidence_refs:
+        - entry-system-prompt-tmpl
+        - comp-docs
+    - id: pat-config-gitignored
+      value: "Local file named config (API keys / memory URL) is gitignored and chmod 600 by setup; never commit."
+      confidence: high
+      evidence_refs:
+        - entry-setup
+        - comp-adopter-cli
+  component_notes:
+    - ref: comp-templates
+      purpose: "Canonical system-prompt template, POSIX/PowerShell renderers, and overlay starters injected at Claude launch."
+      confidence: high
+    - ref: comp-docs
+      purpose: "Adopter onboarding, CLAUDE.md migration guide, and end-user team-member guide for go/park/launch habits."
+      confidence: high
+    - ref: comp-adopter-cli
+      purpose: "Machine setup wizard, Claude launcher with prompt render + optional inbox plugin, diagnostics, and MCP auth probe."
+      confidence: high
+  service_notes:
+    - ref: svc-junto-memory
+      purpose: "Shared MCP knowledge bus (sessions, specs, backlog, messages, audit)."
+      integration: "HTTP JSON-RPC at /mcp; health at /health; optional API key via memory_start_session and memory_* tools when MCP_AUTH_ENABLED=true."
+      confidence: high
+    - ref: svc-junto-inbox
+      purpose: "Live in-session message delivery into Claude Code as channel blocks."
+      integration: "Loaded via --dangerously-load-development-channels plugin:junto-inbox@tlemmons-junto-inbox; JUNTO_SHARED_MEMORY_URL bridged from JUNTO_MEMORY_URL in launch."
+      confidence: high
+    - ref: svc-spg-junto-central
+      purpose: "Hardcoded default central host name used by diagnostics and team docs for the shared memory server."
+      integration: "junto-check probes Tailscale/MagicDNS resolution and http://spg-junto-central:8080/health; adopters may point JUNTO_MEMORY_URL elsewhere."
+      confidence: medium
+  dangerous_areas:
+    - id: danger-config-secrets
+      value: "Local config file holds JUNTO_API_KEY"
+      reason: "setup writes API key into config with mode 600 and .gitignore lists config; committing or copying the clone with a filled config leaks credentials."
+      confidence: high
+      evidence_refs:
+        - entry-setup
+        - cmd-setup
+    - id: danger-auth-in-prompt
+      value: "API key embedded in rendered system prompt"
+      reason: "render.sh injects the raw API key into {{auth_block}} text written under /tmp; prompt files and agent context can expose the key."
+      confidence: high
+      evidence_refs:
+        - entry-render-sh
+        - entry-launch
+    - id: danger-wire-conventions
+      value: "Template wire conventions coupled to junto-memory"
+      reason: "state:<agent> naming, marker strings, and memory_start_session arg names are baked into the template; junto-memory renames require coordinated bumps or agents break."
+      confidence: high
+      evidence_refs:
+        - entry-system-prompt-tmpl
+        - comp-templates
+        - svc-junto-memory
+    - id: danger-launch-creates-claude-md
+      value: "junto-launch.sh may create CLAUDE.md in cwd"
+      reason: "Interactive first launch writes identity CLAUDE.md into the current directory; running launch from the wrong cwd can stamp identity into an unintended repo."
+      confidence: high
+      evidence_refs:
+        - entry-launch
+    - id: danger-check-lvt-defaults
+      value: "junto-check assumes spg-junto-central / LVT tailnet"
+      reason: "Diagnostics hardcode SPG_HOST=spg-junto-central and LVT Tailscale messaging; non-LVT deployments will see false failures unless they ignore or adapt those checks."
+      confidence: high
+      evidence_refs:
+        - entry-check
+        - svc-spg-junto-central
+  questions:
+    - id: q-canonical-vs-lvt-fork
+      question: "README and scripts treat tlemmons/junto as the canonical GitHub repo, but this remote is LiveViewTech/junto — what is the intended upstream/fork relationship and which remote should adopters clone?"
+      area: distribution
+      priority: high
+      evidence_refs:
+        - comp-adopter-cli
+        - svc-junto-memory
+    - id: q-spg-junto-central-scope
+      question: "Is spg-junto-central an LVT-only production hostname that should stay hardcoded in junto-check, or should check become deployment-agnostic via JUNTO_MEMORY_URL alone?"
+      area: diagnostics
+      priority: high
+      evidence_refs:
+        - svc-spg-junto-central
+        - entry-check
+    - id: q-lvt-tailnet-requirement
+      question: "CHANGELOG references an LVT workClaude pilot and check fails when not on the LVT tailnet — is Tailscale/LVT membership a hard product requirement or an org-specific deployment detail?"
+      area: networking
+      priority: medium
+      evidence_refs:
+        - entry-check
+        - dep-tailscale
+    - id: q-tom-operator-role
+      question: "Scripts and team docs direct users to contact Tom for API keys and project names — is that an LVT-specific operator, and should the umbrella document a generic operator contact instead?"
+      area: operations
+      priority: medium
+      evidence_refs:
+        - entry-setup
+        - entry-check
+    - id: q-junto-control-status
+      question: "README lists junto-control as a human dashboard with publish target TBD — does any code or stub for it live elsewhere, or is it purely aspirational in this umbrella?"
+      area: components
+      priority: low
+    - id: q-no-automated-tests
+      question: "No automated test suite or CI workflows were found — is intentional for this docs/scripts umbrella, or are tests expected to be added for render.sh safety-net and check-auth.py?"
+      area: testing
+      priority: medium
