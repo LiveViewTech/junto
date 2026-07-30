@@ -9,7 +9,6 @@ Umbrella for the Junto multi-agent coordination system: ships the canonical Clau
 - Type: single repo (umbrella docs + shell tooling + templates; runtime lives in sibling repos)
 - Tech: Bash, Python 3 (`check-auth.py`), PowerShell (`templates/render.ps1`), Markdown templates/docs
 - External: junto-memory MCP (`/mcp`, health `/health`), optional junto-inbox channel plugin
-- Subguides: [templates/AGENTS.md](templates/AGENTS.md)
 
 ## Commands
 
@@ -36,13 +35,15 @@ cd ~/.junto/templates && ./render.sh --agent NAME --project NAME --role "ROLE" -
 
 ## Directory Map
 
-- `templates/` → [templates/AGENTS.md](templates/AGENTS.md)
+- `templates/` → `junto-system-prompt.md.tmpl`, `render.sh` / `render.ps1`, overlays (`example.md`; `first-run.md` used by setup)
 - `docs/` → adopter guides (`getting-started.md`, `claude-md-migration.md`, `team-member-guide.md`)
 - Root scripts → `junto-setup.sh`, `junto-launch.sh`, `junto-check.sh`, `check-auth.py`
 
 ## Gotchas
 
 - **API key in rendered prompt:** `templates/render.sh` embeds `--api-key` into `{{auth_block}}`; launch writes `/tmp/junto-*-prompt.md`
+- **Unresolved template tokens:** `render.sh` / `render.ps1` exit 3 if any `{{...}}` remains after substitution
+- **Renderer `--cwd`:** pass `--cwd` explicitly — renderer pwd is rarely the agent working dir
 - **Launch creates `CLAUDE.md`:** interactive `junto-launch.sh` can write identity into cwd — run from the intended project directory
 - **`junto-check.sh` LVT defaults:** hardcodes `spg-junto-central` and LVT Tailscale checks; non-LVT deploys will see false failures
 - **Wire coupling:** `state:<agent>`, `[REQUIRES REVIEW]` / `[SYSTEM NOTICE]`, and `memory_start_session` arg names must stay in sync with junto-memory
